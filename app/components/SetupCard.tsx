@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 /* ── Pattern name mapping ──────────────────────── */
 
@@ -72,7 +73,7 @@ function scoreBorderGlow(score: number) {
     return "inset 0 0 0 1px rgba(34,197,94,0.25), 0 0 24px rgba(34,197,94,0.08)";
   if (score >= 7)
     return "inset 0 0 0 1px rgba(74,222,128,0.2), 0 0 16px rgba(74,222,128,0.05)";
-  return "inset 0 0 0 1px var(--color-border)";
+  return undefined;
 }
 
 /* ── Score Gauge (SVG ring) ────────────────────── */
@@ -118,7 +119,7 @@ function ScoreGauge({ score }: { score: number }) {
       <text
         x="26" y="36"
         textAnchor="middle"
-        fill="var(--color-txt-3)"
+        fill="var(--color-muted-foreground)"
         fontSize="7"
         fontFamily="var(--font-mono)"
       >
@@ -134,15 +135,14 @@ function Criterion({ label, met }: { label: string; met: boolean }) {
   return (
     <div className="flex items-center gap-2 text-xs">
       <span
-        className={`flex h-4 w-4 items-center justify-center rounded text-[10px] font-bold ${
-          met
-            ? "bg-bull/15 text-bull"
-            : "bg-surface text-txt-3"
-        }`}
+        className={cn(
+          "flex h-4 w-4 items-center justify-center rounded text-[10px] font-bold",
+          met ? "bg-green-500/15 text-green-500" : "bg-muted text-muted-foreground"
+        )}
       >
         {met ? "\u2713" : "\u00B7"}
       </span>
-      <span className={met ? "text-txt" : "text-txt-3"}>{label}</span>
+      <span className={met ? "text-foreground" : "text-muted-foreground"}>{label}</span>
     </div>
   );
 }
@@ -185,24 +185,23 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
 
   return (
     <Card
-      className={`card-hover animate-fade-in gap-0 py-0 rounded-lg bg-card/80 backdrop-blur-xs overflow-hidden ${flash ? "animate-card-flash" : ""}`}
+      className={cn(
+        "gap-0 py-0 rounded-lg overflow-hidden transition-all duration-200 hover:-translate-y-0.5 animate-in fade-in-0 slide-in-from-bottom-1 duration-300",
+        flash && "ring-2 ring-primary/30 shadow-lg"
+      )}
       style={{ boxShadow: scoreBorderGlow(score) }}
     >
       {/* ── Header ─────────────────────────────── */}
       <CardHeader className="flex-row items-center justify-between px-5 pt-4 pb-3 gap-0">
         <div>
-          <h3
-            className="text-lg font-bold tracking-wider text-txt"
-            style={{ fontFamily: "var(--font-mono)" }}
-          >
+          <h3 className="font-mono text-lg font-bold tracking-wider text-foreground">
             {symbol}
           </h3>
           <p
-            className="mt-0.5 text-2xl font-semibold tracking-tight"
-            style={{
-              fontFamily: "var(--font-mono)",
-              color: indicators.price_above_vwap ? "var(--color-bull)" : "var(--color-bear)",
-            }}
+            className={cn(
+              "mt-0.5 font-mono text-2xl font-semibold tracking-tight",
+              indicators.price_above_vwap ? "text-green-500" : "text-red-500"
+            )}
           >
             {fmtPrice(indicators.price)}
           </p>
@@ -211,12 +210,12 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
       </CardHeader>
 
       {/* ── Indicators ─────────────────────────── */}
-      <Separator className="opacity-60" />
+      <Separator />
       <CardContent className="px-5 py-3">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-txt-3">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           Indicators
         </p>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-1.5" style={{ fontFamily: "var(--font-mono)" }}>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 font-mono">
           <Row label="VWAP" value={fmtPrice(indicators.vwap)} signal={indicators.price_above_vwap} />
           <Row label="SMA 8" value={fmtPrice(indicators.sma_8)} />
           <Row label="SMA 21" value={fmtPrice(indicators.sma_21)} signal={indicators.sma_bullish_cross} />
@@ -227,36 +226,38 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
       </CardContent>
 
       {/* ── Patterns ───────────────────────────── */}
-      <Separator className="opacity-60" />
+      <Separator />
       <CardContent className="px-5 py-3">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-txt-3">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           Patterns
         </p>
         {allPatterns.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
-            {allPatterns.map(({ name, type }) => (
+            {allPatterns.map(({ name, type }, i) => (
               <Badge
                 key={name}
                 variant="outline"
-                className={`pattern-chip rounded-md px-2 py-0.5 text-[11px] font-medium tracking-wide ${
+                className={cn(
+                  "rounded-md px-2 py-0.5 text-[11px] font-medium tracking-wide animate-in fade-in-0",
                   type === "bull"
-                    ? "bg-bull/10 text-bull border-bull/20"
-                    : "bg-bear/10 text-bear border-bear/20"
-                }`}
+                    ? "bg-green-500/10 text-green-500 border-green-500/20"
+                    : "bg-red-500/10 text-red-500 border-red-500/20"
+                )}
+                style={{ animationDelay: `${i * 50}ms` }}
               >
                 {patternName(name)}
               </Badge>
             ))}
           </div>
         ) : (
-          <p className="text-xs italic text-txt-3">None detected</p>
+          <p className="text-xs italic text-muted-foreground">None detected</p>
         )}
       </CardContent>
 
       {/* ── Score Breakdown ─────────────────────── */}
-      <Separator className="opacity-60" />
+      <Separator />
       <CardContent className="px-5 py-3">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-txt-3">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           Breakdown
         </p>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1">
@@ -269,10 +270,10 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
       </CardContent>
 
       {/* ── LLM Analysis ───────────────────────── */}
-      <Separator className="opacity-60" />
+      <Separator />
       <CardContent className="px-5 py-3 pb-4">
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-txt-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             AI Analysis
           </p>
           <Button
@@ -280,11 +281,10 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
             size="xs"
             onClick={handleAnalyze}
             disabled={analyzing}
-            className="text-[10px] font-medium tracking-wider text-txt-2 hover:border-amber/40 hover:text-amber"
           >
             {analyzing ? (
               <>
-                <svg viewBox="0 0 16 16" className="size-3 animate-spin-slow" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg viewBox="0 0 16 16" className="size-3 animate-spin" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round" />
                 </svg>
                 Analyzing
@@ -301,47 +301,45 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
           </Button>
         </div>
         {llm_analysis ? (
-          <Card className="analysis-reveal gap-2.5 rounded-md border-amber/10 bg-amber/[0.03] px-3 py-2.5 shadow-none">
+          <Card className="gap-2.5 rounded-md border-primary/10 bg-primary/[0.03] px-3 py-2.5 shadow-none animate-in fade-in-0 duration-500">
             {/* Bias tag */}
             <div className="flex items-center justify-between">
               <Badge
                 variant="outline"
-                className={`rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${
+                className={cn(
+                  "rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider",
                   llm_analysis.bias.toLowerCase() === "bullish"
-                    ? "bg-bull/15 text-bull border-bull/20"
-                    : "bg-bear/15 text-bear border-bear/20"
-                }`}
+                    ? "bg-green-500/15 text-green-500 border-green-500/20"
+                    : "bg-red-500/15 text-red-500 border-red-500/20"
+                )}
               >
                 {llm_analysis.bias}
               </Badge>
             </div>
 
             {/* Entry / Target / Stop row */}
-            <div
-              className="grid grid-cols-3 gap-2 rounded-md border border-border/40 bg-surface/60 px-2.5 py-2"
-              style={{ fontFamily: "var(--font-mono)" }}
-            >
+            <div className="grid grid-cols-3 gap-2 rounded-md border bg-muted/60 px-2.5 py-2 font-mono">
               <div className="text-center">
-                <p className="text-[9px] uppercase tracking-widest text-txt-3">Entry</p>
-                <p className="text-sm font-medium text-txt">{fmtPrice(llm_analysis.entry)}</p>
+                <p className="text-[9px] uppercase tracking-widest text-muted-foreground">Entry</p>
+                <p className="text-sm font-medium text-foreground">{fmtPrice(llm_analysis.entry)}</p>
               </div>
-              <div className="text-center border-x border-border/40">
-                <p className="text-[9px] uppercase tracking-widest text-bull">Target</p>
-                <p className="text-sm font-medium text-bull">{fmtPrice(llm_analysis.target)}</p>
+              <div className="text-center border-x">
+                <p className="text-[9px] uppercase tracking-widest text-green-500">Target</p>
+                <p className="text-sm font-medium text-green-500">{fmtPrice(llm_analysis.target)}</p>
               </div>
               <div className="text-center">
-                <p className="text-[9px] uppercase tracking-widest text-bear">Stop</p>
-                <p className="text-sm font-medium text-bear">{fmtPrice(llm_analysis.stop)}</p>
+                <p className="text-[9px] uppercase tracking-widest text-red-500">Stop</p>
+                <p className="text-sm font-medium text-red-500">{fmtPrice(llm_analysis.stop)}</p>
               </div>
             </div>
 
             {/* Reasoning */}
-            <p className="text-[11px] leading-relaxed text-txt-2">
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
               {llm_analysis.reasoning}
             </p>
           </Card>
         ) : (
-          <p className="text-xs italic text-txt-3">
+          <p className="text-xs italic text-muted-foreground">
             {score >= 7
               ? "Awaiting AI analysis..."
               : "Score below threshold. Click Analyze to force."}
@@ -365,15 +363,94 @@ function Row({
 }) {
   return (
     <div className="flex items-center justify-between text-xs">
-      <span className="text-txt-3">{label}</span>
+      <span className="text-muted-foreground">{label}</span>
       <span className="flex items-center gap-1.5">
-        <span className="text-txt">{value}</span>
+        <span className="text-foreground">{value}</span>
         {signal !== undefined && (
-          <span className={signal ? "text-bull" : "text-bear"}>
+          <span className={signal ? "text-green-500" : "text-red-500"}>
             {signal ? "\u25B2" : "\u25BC"}
           </span>
         )}
       </span>
     </div>
+  );
+}
+
+/* ── Skeleton placeholder bar ─────────────────── */
+
+function Bone({ className }: { className?: string }) {
+  return <div className={cn("animate-pulse rounded bg-muted", className)} />;
+}
+
+/* ── Skeleton Card ─────────────────────────────── */
+
+export function SetupCardSkeleton({ symbol }: { symbol: string }) {
+  return (
+    <Card className="gap-0 py-0 rounded-lg overflow-hidden animate-in fade-in-0 slide-in-from-bottom-1 duration-300">
+      {/* Header */}
+      <CardHeader className="flex-row items-center justify-between px-5 pt-4 pb-3 gap-0">
+        <div>
+          <h3 className="font-mono text-lg font-bold tracking-wider text-foreground">
+            {symbol}
+          </h3>
+          <Bone className="mt-2 h-7 w-28" />
+        </div>
+        {/* Score ring placeholder */}
+        <div className="h-14 w-14 rounded-full border-3 border-muted animate-pulse" />
+      </CardHeader>
+
+      {/* Indicators */}
+      <Separator />
+      <CardContent className="px-5 py-3">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          Indicators
+        </p>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-2.5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between">
+              <Bone className="h-3 w-10" />
+              <Bone className="h-3 w-16" />
+            </div>
+          ))}
+        </div>
+      </CardContent>
+
+      {/* Patterns */}
+      <Separator />
+      <CardContent className="px-5 py-3">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          Patterns
+        </p>
+        <div className="flex gap-1.5">
+          <Bone className="h-5 w-16 rounded-md" />
+          <Bone className="h-5 w-20 rounded-md" />
+        </div>
+      </CardContent>
+
+      {/* Breakdown */}
+      <Separator />
+      <CardContent className="px-5 py-3">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          Breakdown
+        </p>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Bone className="h-4 w-4 rounded" />
+              <Bone className="h-3 w-20" />
+            </div>
+          ))}
+        </div>
+      </CardContent>
+
+      {/* AI Analysis */}
+      <Separator />
+      <CardContent className="px-5 py-3 pb-4">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          AI Analysis
+        </p>
+        <p className="text-xs italic text-muted-foreground">Waiting for data...</p>
+      </CardContent>
+    </Card>
   );
 }

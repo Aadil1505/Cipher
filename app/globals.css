@@ -152,3 +152,8 @@
     animation: none;
     mix-blend-mode: normal;
 }
+
+/* Score gauge SVG transition */
+.score-ring {
+  transition: stroke-dashoffset 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+}
