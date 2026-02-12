@@ -1,26 +1,140 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-void: #04060c;
+  --color-abyss: #090c16;
+  --color-surface: #0e1220;
+  --color-elevated: #141828;
+  --color-border: #1c2236;
+  --color-border-bright: #2a3150;
+
+  --color-amber: #d4a017;
+  --color-amber-bright: #f0be30;
+
+  --color-bull: #22c55e;
+  --color-bear: #ef4444;
+
+  --color-sky: #38bdf8;
+
+  --color-txt: #dfe3ef;
+  --color-txt-2: #8490ab;
+  --color-txt-3: #4a5470;
+
+  --font-display: var(--font-sora), system-ui, sans-serif;
+  --font-mono: var(--font-jbm), "Courier New", monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Keyframes ──────────────────────────────────── */
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes card-flash {
+  0% { box-shadow: inset 0 0 0 1px rgba(212, 160, 23, 0.5), 0 0 24px rgba(212, 160, 23, 0.12); }
+  100% { box-shadow: inset 0 0 0 1px var(--color-border), 0 0 0 transparent; }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── Base ───────────────────────────────────────── */
+
+html {
+  scrollbar-gutter: stable;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-void);
+  color: var(--color-txt);
+  font-family: var(--font-display);
+  min-height: 100dvh;
+
+  /* subtle dot-grid texture */
+  background-image: radial-gradient(circle, rgba(42, 49, 80, 0.35) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
+
+/* ── Scrollbar ──────────────────────────────────── */
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border-bright); border-radius: 9px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-txt-3); }
+
+/* ── Focus ──────────────────────────────────────── */
+
+*:focus-visible {
+  outline: 1.5px solid var(--color-amber);
+  outline-offset: 2px;
+}
+
+/* ── Utilities ──────────────────────────────────── */
+
+.animate-fade-in {
+  animation: fade-in 0.35s ease-out both;
+}
+
+.animate-card-flash {
+  animation: card-flash 0.7s ease-out;
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 1.2s linear infinite;
+}
+
+.shimmer-bg {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(212, 160, 23, 0.06) 40%,
+    rgba(212, 160, 23, 0.06) 60%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2.5s ease-in-out infinite;
+}
+
+/* Score ring transition */
+.score-ring {
+  transition: stroke-dashoffset 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Card hover lift */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Analysis text reveal */
+.analysis-reveal {
+  animation: fade-in 0.5s ease-out both;
+  animation-delay: 0.15s;
+}
+
+/* Pattern chip entrance */
+.pattern-chip {
+  animation: fade-in 0.25s ease-out both;
+}
+.pattern-chip:nth-child(2) { animation-delay: 0.05s; }
+.pattern-chip:nth-child(3) { animation-delay: 0.1s; }
+.pattern-chip:nth-child(4) { animation-delay: 0.15s; }
