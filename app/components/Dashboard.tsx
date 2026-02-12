@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useCipher } from "@/app/hooks/useCipher";
+import { Card } from "@/components/ui/card";
 import StatusBar from "./StatusBar";
 import TickerManager from "./TickerManager";
 import SetupCard from "./SetupCard";
@@ -21,7 +22,6 @@ export default function Dashboard() {
   const engineRunning = health?.engine_running ?? false;
   const trackedSymbols = health?.tracked_symbols ?? [];
 
-  // When engine is off, we accumulate symbols locally
   const [pendingSymbols, setPendingSymbols] = useState<string[]>([]);
   const displayedSymbols = engineRunning ? trackedSymbols : pendingSymbols;
 
@@ -106,7 +106,6 @@ export default function Dashboard() {
         </div>
       </main>
 
-      {/* Ambient footer line */}
       <footer className="border-t border-border/40 py-3 text-center">
         <p className="text-[10px] tracking-[0.25em] uppercase text-txt-3">
           Cipher Trading Engine
@@ -130,13 +129,13 @@ function EmptyState({
   if (!backendOnline) {
     return (
       <div className="flex flex-col items-center justify-center py-32 animate-fade-in">
-        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-xl border border-bear/20 bg-bear/5">
+        <Card className="mb-6 flex h-16 w-16 items-center justify-center rounded-xl border-bear/20 bg-bear/5 shadow-none py-0">
           <svg viewBox="0 0 24 24" className="h-7 w-7 text-bear" fill="none" stroke="currentColor" strokeWidth="1.5">
             <circle cx="12" cy="12" r="10" />
             <line x1="15" y1="9" x2="9" y2="15" />
             <line x1="9" y1="9" x2="15" y2="15" />
           </svg>
-        </div>
+        </Card>
         <h2 className="text-lg font-semibold text-txt">Backend Offline</h2>
         <p className="mt-2 max-w-xs text-center text-sm text-txt-3">
           Start the Cipher backend server on port 8000 to connect.
@@ -154,12 +153,12 @@ function EmptyState({
   if (!engineRunning) {
     return (
       <div className="flex flex-col items-center justify-center py-32 animate-fade-in">
-        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-xl border border-amber/20 bg-amber/5">
+        <Card className="mb-6 flex h-16 w-16 items-center justify-center rounded-xl border-amber/20 bg-amber/5 shadow-none py-0">
           <svg viewBox="0 0 24 24" className="h-7 w-7 text-amber" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
             <polyline points="16 7 22 7 22 13" />
           </svg>
-        </div>
+        </Card>
         <h2 className="text-lg font-semibold text-txt">Engine Idle</h2>
         <p className="mt-2 max-w-sm text-center text-sm text-txt-3">
           {symbolCount === 0
@@ -170,14 +169,13 @@ function EmptyState({
     );
   }
 
-  // Engine running but no setups yet (waiting for data)
   return (
     <div className="flex flex-col items-center justify-center py-32 animate-fade-in">
-      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-xl border border-sky/20 bg-sky/5">
+      <Card className="mb-6 flex h-16 w-16 items-center justify-center rounded-xl border-sky/20 bg-sky/5 shadow-none py-0">
         <svg viewBox="0 0 24 24" className="h-7 w-7 text-sky animate-spin-slow" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
           <circle cx="12" cy="12" r="10" strokeDasharray="50" strokeDashoffset="15" />
         </svg>
-      </div>
+      </Card>
       <h2 className="text-lg font-semibold text-txt">Awaiting Data</h2>
       <p className="mt-2 max-w-xs text-center text-sm text-txt-3">
         Fetching historical bars and streaming live data...

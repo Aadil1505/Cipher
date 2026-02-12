@@ -1,6 +1,7 @@
 "use client";
 
 import type { HealthData, WsStatus } from "@/app/lib/types";
+import { Badge } from "@/components/ui/badge";
 
 interface Props {
   health: HealthData | null;
@@ -28,10 +29,10 @@ function StatusChip({
   color: string;
 }) {
   return (
-    <div className="flex items-center gap-2 rounded-md bg-surface px-3 py-1.5 border border-border text-xs tracking-wide">
+    <Badge variant="outline" className="gap-2 rounded-md px-3 py-1.5 text-xs tracking-wide bg-surface">
       <Dot on={on} color={color} />
       <span className={on ? "text-txt" : "text-txt-3"}>{label}</span>
-    </div>
+    </Badge>
   );
 }
 
@@ -77,9 +78,9 @@ export default function StatusBar({ health, wsStatus }: Props) {
             CIPHER
           </h1>
           {!backendOnline && (
-            <span className="ml-2 rounded bg-bear/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-bear">
+            <Badge variant="destructive" className="ml-2 rounded-md text-[10px] font-medium uppercase tracking-widest">
               Backend Offline
-            </span>
+            </Badge>
           )}
         </div>
 
@@ -95,7 +96,7 @@ export default function StatusBar({ health, wsStatus }: Props) {
         </div>
 
         {/* WebSocket Status */}
-        <div className="flex items-center gap-2 rounded-md bg-surface px-3 py-1.5 border border-border text-xs tracking-wide">
+        <Badge variant="outline" className="gap-2 rounded-md bg-surface px-3 py-1.5 text-xs tracking-wide">
           <span
             className={`inline-block h-2 w-2 rounded-full ${wsStatus === "connecting" ? "animate-spin-slow" : wsStatus === "connected" ? "animate-pulse-dot" : ""}`}
             style={{ backgroundColor: wsColor }}
@@ -103,7 +104,7 @@ export default function StatusBar({ health, wsStatus }: Props) {
           <span className="font-mono text-txt-2" style={{ fontFamily: "var(--font-mono)" }}>
             WS {wsLabel}
           </span>
-        </div>
+        </Badge>
       </div>
     </header>
   );

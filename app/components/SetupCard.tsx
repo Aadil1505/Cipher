@@ -2,6 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { SetupData } from "@/app/lib/types";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 /* ── Pattern name mapping ──────────────────────── */
 
@@ -82,14 +86,12 @@ function ScoreGauge({ score }: { score: number }) {
 
   return (
     <svg viewBox="0 0 52 52" className="h-14 w-14" aria-label={`Score ${score} out of 10`}>
-      {/* Background ring */}
       <circle
         cx="26" cy="26" r={r}
         fill="none"
         stroke="var(--color-border)"
         strokeWidth="3"
       />
-      {/* Score arc */}
       <circle
         cx="26" cy="26" r={r}
         fill="none"
@@ -102,7 +104,6 @@ function ScoreGauge({ score }: { score: number }) {
         className="score-ring"
         style={{ filter: score >= 7 ? `drop-shadow(0 0 4px ${color}50)` : "none" }}
       />
-      {/* Score number */}
       <text
         x="26" y="24"
         textAnchor="middle"
@@ -159,7 +160,6 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
   const [flash, setFlash] = useState(false);
   const prevUpdate = useRef(setup._updatedAt);
 
-  // Flash on update
   useEffect(() => {
     if (setup._updatedAt && setup._updatedAt !== prevUpdate.current) {
       prevUpdate.current = setup._updatedAt;
@@ -184,12 +184,12 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
   ];
 
   return (
-    <div
-      className={`card-hover animate-fade-in rounded-lg border border-border bg-surface/80 backdrop-blur-xs overflow-hidden ${flash ? "animate-card-flash" : ""}`}
+    <Card
+      className={`card-hover animate-fade-in gap-0 py-0 rounded-lg bg-card/80 backdrop-blur-xs overflow-hidden ${flash ? "animate-card-flash" : ""}`}
       style={{ boxShadow: scoreBorderGlow(score) }}
     >
       {/* ── Header ─────────────────────────────── */}
-      <div className="flex items-center justify-between px-5 pt-4 pb-3">
+      <CardHeader className="flex-row items-center justify-between px-5 pt-4 pb-3 gap-0">
         <div>
           <h3
             className="text-lg font-bold tracking-wider text-txt"
@@ -208,10 +208,11 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
           </p>
         </div>
         <ScoreGauge score={score} />
-      </div>
+      </CardHeader>
 
       {/* ── Indicators ─────────────────────────── */}
-      <div className="border-t border-border/60 px-5 py-3">
+      <Separator className="opacity-60" />
+      <CardContent className="px-5 py-3">
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-txt-3">
           Indicators
         </p>
@@ -223,35 +224,38 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
           <Row label="Vol Ratio" value={fmtRatio(indicators.volume_ratio)} signal={indicators.volume_surge} />
           <Row label="Momentum" value={fmtPct(indicators.sma_separation_pct)} signal={indicators.strong_momentum} />
         </div>
-      </div>
+      </CardContent>
 
       {/* ── Patterns ───────────────────────────── */}
-      <div className="border-t border-border/60 px-5 py-3">
+      <Separator className="opacity-60" />
+      <CardContent className="px-5 py-3">
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-txt-3">
           Patterns
         </p>
         {allPatterns.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {allPatterns.map(({ name, type }) => (
-              <span
+              <Badge
                 key={name}
-                className={`pattern-chip rounded px-2 py-0.5 text-[11px] font-medium tracking-wide ${
+                variant="outline"
+                className={`pattern-chip rounded-md px-2 py-0.5 text-[11px] font-medium tracking-wide ${
                   type === "bull"
-                    ? "bg-bull/10 text-bull border border-bull/20"
-                    : "bg-bear/10 text-bear border border-bear/20"
+                    ? "bg-bull/10 text-bull border-bull/20"
+                    : "bg-bear/10 text-bear border-bear/20"
                 }`}
               >
                 {patternName(name)}
-              </span>
+              </Badge>
             ))}
           </div>
         ) : (
           <p className="text-xs italic text-txt-3">None detected</p>
         )}
-      </div>
+      </CardContent>
 
       {/* ── Score Breakdown ─────────────────────── */}
-      <div className="border-t border-border/60 px-5 py-3">
+      <Separator className="opacity-60" />
+      <CardContent className="px-5 py-3">
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-txt-3">
           Breakdown
         </p>
@@ -262,55 +266,59 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
           <Criterion label="Bullish Pattern" met={breakdown.bullish_pattern} />
           <Criterion label="Momentum" met={breakdown.strong_momentum} />
         </div>
-      </div>
+      </CardContent>
 
       {/* ── LLM Analysis ───────────────────────── */}
-      <div className="border-t border-border/60 px-5 py-3 pb-4">
+      <Separator className="opacity-60" />
+      <CardContent className="px-5 py-3 pb-4">
         <div className="mb-2 flex items-center justify-between">
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-txt-3">
             AI Analysis
           </p>
-          <button
+          <Button
+            variant="outline"
+            size="xs"
             onClick={handleAnalyze}
             disabled={analyzing}
-            className="flex items-center gap-1.5 rounded border border-border bg-elevated px-2 py-1 text-[10px] font-medium tracking-wider text-txt-2 transition-all hover:border-amber/40 hover:text-amber disabled:opacity-50"
+            className="text-[10px] font-medium tracking-wider text-txt-2 hover:border-amber/40 hover:text-amber"
           >
             {analyzing ? (
               <>
-                <svg viewBox="0 0 16 16" className="h-3 w-3 animate-spin-slow" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg viewBox="0 0 16 16" className="size-3 animate-spin-slow" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round" />
                 </svg>
                 Analyzing
               </>
             ) : (
               <>
-                <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <svg viewBox="0 0 16 16" className="size-3" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <circle cx="8" cy="8" r="6" />
                   <path d="M8 5v3l2 1.5" />
                 </svg>
                 Analyze
               </>
             )}
-          </button>
+          </Button>
         </div>
         {llm_analysis ? (
-          <div className="analysis-reveal rounded-md border border-amber/10 bg-amber/[0.03] px-3 py-2.5 space-y-2.5">
-            {/* Bias tag + price levels */}
+          <Card className="analysis-reveal gap-2.5 rounded-md border-amber/10 bg-amber/[0.03] px-3 py-2.5 shadow-none">
+            {/* Bias tag */}
             <div className="flex items-center justify-between">
-              <span
-                className={`rounded px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${
+              <Badge
+                variant="outline"
+                className={`rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${
                   llm_analysis.bias.toLowerCase() === "bullish"
-                    ? "bg-bull/15 text-bull"
-                    : "bg-bear/15 text-bear"
+                    ? "bg-bull/15 text-bull border-bull/20"
+                    : "bg-bear/15 text-bear border-bear/20"
                 }`}
               >
                 {llm_analysis.bias}
-              </span>
+              </Badge>
             </div>
 
             {/* Entry / Target / Stop row */}
             <div
-              className="grid grid-cols-3 gap-2 rounded border border-border/40 bg-surface/60 px-2.5 py-2"
+              className="grid grid-cols-3 gap-2 rounded-md border border-border/40 bg-surface/60 px-2.5 py-2"
               style={{ fontFamily: "var(--font-mono)" }}
             >
               <div className="text-center">
@@ -331,7 +339,7 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
             <p className="text-[11px] leading-relaxed text-txt-2">
               {llm_analysis.reasoning}
             </p>
-          </div>
+          </Card>
         ) : (
           <p className="text-xs italic text-txt-3">
             {score >= 7
@@ -339,8 +347,8 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
               : "Score below threshold. Click Analyze to force."}
           </p>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
