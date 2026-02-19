@@ -10,6 +10,7 @@ import SetupCard, { SetupCardSkeleton } from "./SetupCard";
 export default function Dashboard() {
   const {
     setups,
+    livePrices,
     health,
     wsStatus,
     startEngine,
@@ -103,7 +104,7 @@ export default function Dashboard() {
     [analyzeSymbol]
   );
 
-  const setupList = Object.values(setups).sort((a, b) => b.score - a.score);
+  const setupList = Object.values(setups).sort((a, b) => b.dominant_score - a.dominant_score);
 
   // Symbols that are tracked but haven't received data yet
   const loadingSymbols = trackedSymbols.filter((s) => !setups[s]);
@@ -134,6 +135,7 @@ export default function Dashboard() {
                 <SetupCard
                   key={s.symbol}
                   setup={s}
+                  livePrice={livePrices[s.symbol] ?? null}
                   onAnalyze={handleAnalyze}
                 />
               ))}

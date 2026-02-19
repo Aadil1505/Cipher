@@ -1,3 +1,5 @@
+import type { LLMAnalysis } from "@/app/lib/types";
+
 const API = "http://localhost:8000";
 
 async function post<T>(path: string, body?: unknown): Promise<T> {
@@ -33,7 +35,7 @@ export const api = {
     }),
 
   analyzeSymbol: (symbol: string) =>
-    post<{ symbol: string; analysis: { bias: string; entry: number; target: number; stop: number; reasoning: string } | null }>(`/api/analyze/${symbol}`),
+    post<{ symbol: string; analysis: LLMAnalysis | null }>(`/api/analyze/${symbol}`),
 
   getSetups: () =>
     get<Record<string, unknown>>("/api/setups"),

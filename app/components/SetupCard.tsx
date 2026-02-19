@@ -1,37 +1,92 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import type { SetupData } from "@/app/lib/types";
+import type { SetupData, PriceUpdate } from "@/app/lib/types";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
-/* ── Pattern name mapping ──────────────────────── */
+/* ── Pattern name + description mapping ───────── */
 
-const PATTERN_LABEL: Record<string, string> = {
-  CDLENGULFING: "Engulfing",
-  CDLHAMMER: "Hammer",
-  CDLMORNINGSTAR: "Morning Star",
-  CDLDOJI: "Doji",
-  CDLHARAMI: "Harami",
-  CDLPIERCING: "Piercing",
-  CDLMARUBOZU: "Marubozu",
-  CDLINVERTEDHAMMER: "Inv. Hammer",
-  CDLMORNINGDOJISTAR: "Morning Doji",
-  CDL3WHITESOLDIERS: "3 Soldiers",
-  CDLKICKING: "Kicking",
-  CDLDRAGONFLYDOJI: "Dragonfly",
-  CDLHANGINGMAN: "Hanging Man",
-  CDLEVENINGSTAR: "Evening Star",
-  CDLSHOOTINGSTAR: "Shooting Star",
-  CDL3BLACKCROWS: "3 Crows",
-  CDLEVENINGDOJISTAR: "Eve. Doji",
+const PATTERN_INFO: Record<string, { label: string; desc: string }> = {
+  CDLENGULFING: {
+    label: "Engulfing",
+    desc: "Current candle fully covers the previous one — strong reversal signal.",
+  },
+  CDLHAMMER: {
+    label: "Hammer",
+    desc: "Small body with a long lower wick — buyers rejected lower prices, often signals a bounce.",
+  },
+  CDLMORNINGSTAR: {
+    label: "Morning Star",
+    desc: "Three-candle reversal: big red, small indecision, then big green — trend may be turning up.",
+  },
+  CDLDOJI: {
+    label: "Doji",
+    desc: "Open and close nearly equal — market is undecided, watch for a breakout in either direction.",
+  },
+  CDLHARAMI: {
+    label: "Harami",
+    desc: "Small candle contained inside the previous one — momentum is slowing, possible reversal.",
+  },
+  CDLPIERCING: {
+    label: "Piercing",
+    desc: "Green candle opens below prior low but closes above its midpoint — bullish reversal signal.",
+  },
+  CDLMARUBOZU: {
+    label: "Marubozu",
+    desc: "Full-body candle with no wicks — very strong conviction in one direction.",
+  },
+  CDLINVERTEDHAMMER: {
+    label: "Inv. Hammer",
+    desc: "Small body with a long upper wick after a downtrend — buyers are testing higher prices.",
+  },
+  CDLMORNINGDOJISTAR: {
+    label: "Morning Doji",
+    desc: "Like Morning Star but the middle candle is a Doji — stronger indecision before reversal.",
+  },
+  CDL3WHITESOLDIERS: {
+    label: "3 Soldiers",
+    desc: "Three consecutive strong green candles — powerful bullish momentum, trend likely continuing up.",
+  },
+  CDLKICKING: {
+    label: "Kicking",
+    desc: "Two opposing Marubozu candles with a gap — one of the strongest reversal signals.",
+  },
+  CDLDRAGONFLYDOJI: {
+    label: "Dragonfly",
+    desc: "Doji with a long lower wick — sellers pushed down but buyers fought back to the open.",
+  },
+  CDLHANGINGMAN: {
+    label: "Hanging Man",
+    desc: "Hammer shape at the top of an uptrend — warning that buyers may be losing control.",
+  },
+  CDLEVENINGSTAR: {
+    label: "Evening Star",
+    desc: "Three-candle reversal: big green, small indecision, then big red — trend may be turning down.",
+  },
+  CDLSHOOTINGSTAR: {
+    label: "Shooting Star",
+    desc: "Small body with a long upper wick at a high — sellers rejected higher prices, bearish signal.",
+  },
+  CDL3BLACKCROWS: {
+    label: "3 Crows",
+    desc: "Three consecutive strong red candles — powerful bearish momentum, trend likely continuing down.",
+  },
+  CDLEVENINGDOJISTAR: {
+    label: "Eve. Doji",
+    desc: "Like Evening Star but the middle candle is a Doji — stronger indecision before bearish reversal.",
+  },
 };
 
 function patternName(raw: string) {
-  return PATTERN_LABEL[raw] || raw.replace("CDL", "");
+  return PATTERN_INFO[raw]?.label || raw.replace("CDL", "");
+}
+
+function patternDesc(raw: string) {
+  return PATTERN_INFO[raw]?.desc || "";
 }
 
 /* ── Formatting helpers ────────────────────────── */
@@ -60,7 +115,13 @@ function fmtPct(n: number) {
 
 /* ── Score color ───────────────────────────────── */
 
-function scoreColor(score: number) {
+function scoreColor(score: number, bias: string) {
+  if (bias === "Bearish") {
+    if (score >= 9) return "#ef4444";
+    if (score >= 7) return "#f87171";
+    if (score >= 5) return "#eab308";
+    return "#6b7280";
+  }
   if (score >= 9) return "#22c55e";
   if (score >= 7) return "#4ade80";
   if (score >= 5) return "#eab308";
@@ -68,7 +129,9 @@ function scoreColor(score: number) {
   return "#ef4444";
 }
 
-function scoreBorderGlow(score: number) {
+function scoreBorderGlow(score: number, bias: string) {
+  if (bias === "Bearish" && score >= 7)
+    return "inset 0 0 0 1px rgba(239,68,68,0.25), 0 0 24px rgba(239,68,68,0.08)";
   if (score >= 9)
     return "inset 0 0 0 1px rgba(34,197,94,0.25), 0 0 24px rgba(34,197,94,0.08)";
   if (score >= 7)
@@ -78,15 +141,15 @@ function scoreBorderGlow(score: number) {
 
 /* ── Score Gauge (SVG ring) ────────────────────── */
 
-function ScoreGauge({ score }: { score: number }) {
+function ScoreGauge({ score, bias }: { score: number; bias: string }) {
   const r = 20;
   const circ = 2 * Math.PI * r;
   const filled = (score / 10) * circ;
   const offset = circ - filled;
-  const color = scoreColor(score);
+  const color = scoreColor(score, bias);
 
   return (
-    <svg viewBox="0 0 52 52" className="h-14 w-14" aria-label={`Score ${score} out of 10`}>
+    <svg viewBox="0 0 52 52" className="h-14 w-14" aria-label={`${bias} score ${score} out of 10`}>
       <circle
         cx="26" cy="26" r={r}
         fill="none"
@@ -147,18 +210,49 @@ function Criterion({ label, met }: { label: string; met: boolean }) {
   );
 }
 
+function BearishCriterion({ label, met }: { label: string; met: boolean }) {
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <span
+        className={cn(
+          "flex h-4 w-4 items-center justify-center rounded text-[10px] font-bold",
+          met ? "bg-red-500/15 text-red-500" : "bg-muted text-muted-foreground"
+        )}
+      >
+        {met ? "\u2713" : "\u00B7"}
+      </span>
+      <span className={met ? "text-foreground" : "text-muted-foreground"}>{label}</span>
+    </div>
+  );
+}
+
 /* ── Main card ─────────────────────────────────── */
 
 interface Props {
   setup: SetupData;
+  livePrice: PriceUpdate | null;
   onAnalyze: (symbol: string) => Promise<unknown>;
 }
 
-export default function SetupCard({ setup, onAnalyze }: Props) {
-  const { symbol, score, indicators, patterns, breakdown, llm_analysis } = setup;
+export default function SetupCard({ setup, livePrice, onAnalyze }: Props) {
+  const { symbol, score, indicators, patterns, breakdown, bearish_breakdown, bias, dominant_score, llm_analysis } = setup;
   const [analyzing, setAnalyzing] = useState(false);
   const [flash, setFlash] = useState(false);
   const prevUpdate = useRef(setup._updatedAt);
+
+  // Use live price if available, fall back to indicator price
+  const displayPrice = livePrice?.last_price ?? indicators.price;
+  const prevPriceRef = useRef(displayPrice);
+  const [priceDirection, setPriceDirection] = useState<"up" | "down" | null>(null);
+
+  useEffect(() => {
+    if (displayPrice !== prevPriceRef.current) {
+      setPriceDirection(displayPrice > prevPriceRef.current ? "up" : "down");
+      prevPriceRef.current = displayPrice;
+      const t = setTimeout(() => setPriceDirection(null), 500);
+      return () => clearTimeout(t);
+    }
+  }, [displayPrice]);
 
   useEffect(() => {
     if (setup._updatedAt && setup._updatedAt !== prevUpdate.current) {
@@ -178,6 +272,32 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
     }
   };
 
+  // Track freshness — update a relative time string every second
+  const lastDataTime = useRef(Date.now());
+  const [ago, setAgo] = useState("");
+
+  // Reset timer whenever we get new data (setup update or price tick)
+  useEffect(() => {
+    lastDataTime.current = Date.now();
+  }, [setup._updatedAt, livePrice]);
+
+  useEffect(() => {
+    const tick = () => {
+      const sec = Math.floor((Date.now() - lastDataTime.current) / 1000);
+      if (sec < 5) setAgo("Live");
+      else if (sec < 60) setAgo(`${sec}s ago`);
+      else if (sec < 3600) setAgo(`${Math.floor(sec / 60)}m ago`);
+      else setAgo("Stale");
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Live-compute price_above_vwap using real-time price
+  const liveAboveVwap = displayPrice > indicators.vwap;
+  const liveVolume = livePrice?.total_volume ?? indicators.volume;
+
   const allPatterns = [
     ...patterns.bullish_patterns.map((p) => ({ name: p, type: "bull" as const })),
     ...patterns.bearish_patterns.map((p) => ({ name: p, type: "bear" as const })),
@@ -189,24 +309,60 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
         "gap-0 py-0 rounded-lg overflow-hidden transition-all duration-200 hover:-translate-y-0.5 animate-in fade-in-0 slide-in-from-bottom-1 duration-300",
         flash && "ring-2 ring-primary/30 shadow-lg"
       )}
-      style={{ boxShadow: scoreBorderGlow(score) }}
+      style={{ boxShadow: scoreBorderGlow(dominant_score, bias) }}
     >
       {/* ── Header ─────────────────────────────── */}
       <CardHeader className="flex-row items-center justify-between px-5 pt-4 pb-3 gap-0">
         <div>
-          <h3 className="font-mono text-lg font-bold tracking-wider text-foreground">
-            {symbol}
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-mono text-lg font-bold tracking-wider text-foreground">
+              {symbol}
+            </h3>
+            <Badge
+              variant="outline"
+              className={cn(
+                "rounded-md px-1.5 py-0 text-[10px] font-semibold uppercase tracking-wider",
+                bias === "Bullish"
+                  ? "bg-green-500/10 text-green-500 border-green-500/20"
+                  : bias === "Bearish"
+                    ? "bg-red-500/10 text-red-500 border-red-500/20"
+                    : "bg-muted text-muted-foreground"
+              )}
+            >
+              {bias}
+            </Badge>
+            <span
+              className={cn(
+                "text-[10px] font-mono",
+                ago === "Live"
+                  ? "text-green-500"
+                  : ago === "Stale"
+                    ? "text-red-500"
+                    : "text-muted-foreground"
+              )}
+            >
+              {ago === "Live" && (
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500 mr-1 animate-pulse" />
+              )}
+              {ago}
+            </span>
+          </div>
           <p
             className={cn(
-              "mt-0.5 font-mono text-2xl font-semibold tracking-tight",
-              indicators.price_above_vwap ? "text-green-500" : "text-red-500"
+              "mt-0.5 font-mono text-2xl font-semibold tracking-tight transition-colors duration-300",
+              priceDirection === "up"
+                ? "text-green-400"
+                : priceDirection === "down"
+                  ? "text-red-400"
+                  : liveAboveVwap
+                    ? "text-green-500"
+                    : "text-red-500"
             )}
           >
-            {fmtPrice(indicators.price)}
+            {fmtPrice(displayPrice)}
           </p>
         </div>
-        <ScoreGauge score={score} />
+        <ScoreGauge score={dominant_score} bias={bias} />
       </CardHeader>
 
       {/* ── Indicators ─────────────────────────── */}
@@ -216,10 +372,10 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
           Indicators
         </p>
         <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 font-mono">
-          <Row label="VWAP" value={fmtPrice(indicators.vwap)} signal={indicators.price_above_vwap} />
+          <Row label="VWAP" value={fmtPrice(indicators.vwap)} signal={liveAboveVwap} />
           <Row label="SMA 8" value={fmtPrice(indicators.sma_8)} />
           <Row label="SMA 21" value={fmtPrice(indicators.sma_21)} signal={indicators.sma_bullish_cross} />
-          <Row label="Vol" value={fmtVol(indicators.volume)} />
+          <Row label="Vol" value={fmtVol(liveVolume)} />
           <Row label="Vol Ratio" value={fmtRatio(indicators.volume_ratio)} signal={indicators.volume_surge} />
           <Row label="Momentum" value={fmtPct(indicators.sma_separation_pct)} signal={indicators.strong_momentum} />
         </div>
@@ -237,8 +393,9 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
               <Badge
                 key={name}
                 variant="outline"
+                title={patternDesc(name)}
                 className={cn(
-                  "rounded-md px-2 py-0.5 text-[11px] font-medium tracking-wide animate-in fade-in-0",
+                  "cursor-help rounded-md px-2 py-0.5 text-[11px] font-medium tracking-wide animate-in fade-in-0",
                   type === "bull"
                     ? "bg-green-500/10 text-green-500 border-green-500/20"
                     : "bg-red-500/10 text-red-500 border-red-500/20"
@@ -257,15 +414,33 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
       {/* ── Score Breakdown ─────────────────────── */}
       <Separator />
       <CardContent className="px-5 py-3">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          Breakdown
-        </p>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-          <Criterion label="Price > VWAP" met={breakdown.price_above_vwap} />
-          <Criterion label="SMA Bullish" met={breakdown.sma_bullish} />
-          <Criterion label="Volume Surge" met={breakdown.volume_surge} />
-          <Criterion label="Bullish Pattern" met={breakdown.bullish_pattern} />
-          <Criterion label="Momentum" met={breakdown.strong_momentum} />
+        <div className="flex gap-6">
+          {/* Bullish */}
+          <div className="flex-1">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-green-500">
+              Bullish {score}/10
+            </p>
+            <div className="space-y-1">
+              <Criterion label="Price > VWAP" met={breakdown.price_above_vwap} />
+              <Criterion label="SMA Bullish" met={breakdown.sma_bullish} />
+              <Criterion label="Volume Surge" met={breakdown.volume_surge} />
+              <Criterion label="Bull Pattern" met={breakdown.bullish_pattern} />
+              <Criterion label="Momentum" met={breakdown.strong_momentum} />
+            </div>
+          </div>
+          {/* Bearish */}
+          <div className="flex-1">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-red-500">
+              Bearish {bearish_breakdown.score}/10
+            </p>
+            <div className="space-y-1">
+              <BearishCriterion label="Price < VWAP" met={bearish_breakdown.price_below_vwap} />
+              <BearishCriterion label="SMA Bearish" met={bearish_breakdown.sma_bearish} />
+              <BearishCriterion label="Volume Surge" met={bearish_breakdown.volume_surge} />
+              <BearishCriterion label="Bear Pattern" met={bearish_breakdown.bearish_pattern} />
+              <BearishCriterion label="Momentum" met={bearish_breakdown.strong_momentum} />
+            </div>
+          </div>
         </div>
       </CardContent>
 
@@ -302,8 +477,8 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
         </div>
         {llm_analysis ? (
           <Card className="gap-2.5 rounded-md border-primary/10 bg-primary/[0.03] px-3 py-2.5 shadow-none animate-in fade-in-0 duration-500">
-            {/* Bias tag */}
-            <div className="flex items-center justify-between">
+            {/* Bias + Confidence + R:R */}
+            <div className="flex items-center gap-2">
               <Badge
                 variant="outline"
                 className={cn(
@@ -315,6 +490,36 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
               >
                 {llm_analysis.bias}
               </Badge>
+              {llm_analysis.confidence && (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "rounded-md px-2 py-0.5 text-[11px] font-medium tracking-wide",
+                    llm_analysis.confidence === "High"
+                      ? "bg-green-500/10 text-green-500 border-green-500/20"
+                      : llm_analysis.confidence === "Medium"
+                        ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+                        : "bg-red-500/10 text-red-500 border-red-500/20"
+                  )}
+                >
+                  {llm_analysis.confidence}
+                </Badge>
+              )}
+              {llm_analysis.risk_reward > 0 && (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "ml-auto rounded-md px-2 py-0.5 font-mono text-[11px] font-medium tracking-wide",
+                    llm_analysis.risk_reward >= 2
+                      ? "bg-green-500/10 text-green-500 border-green-500/20"
+                      : llm_analysis.risk_reward >= 1
+                        ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+                        : "bg-red-500/10 text-red-500 border-red-500/20"
+                  )}
+                >
+                  {llm_analysis.risk_reward}:1 R/R
+                </Badge>
+              )}
             </div>
 
             {/* Entry / Target / Stop row */}
@@ -333,14 +538,31 @@ export default function SetupCard({ setup, onAnalyze }: Props) {
               </div>
             </div>
 
-            {/* Reasoning */}
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
-              {llm_analysis.reasoning}
-            </p>
+            {/* Structured reasoning */}
+            <div className="space-y-1.5">
+              {llm_analysis.why_enter && (
+                <div className="text-[11px] leading-relaxed">
+                  <span className="font-semibold text-green-500">Why enter: </span>
+                  <span className="text-muted-foreground">{llm_analysis.why_enter}</span>
+                </div>
+              )}
+              {llm_analysis.key_risk && (
+                <div className="text-[11px] leading-relaxed">
+                  <span className="font-semibold text-red-500">Key risk: </span>
+                  <span className="text-muted-foreground">{llm_analysis.key_risk}</span>
+                </div>
+              )}
+              {llm_analysis.watch_for && (
+                <div className="text-[11px] leading-relaxed">
+                  <span className="font-semibold text-yellow-500">Watch for: </span>
+                  <span className="text-muted-foreground">{llm_analysis.watch_for}</span>
+                </div>
+              )}
+            </div>
           </Card>
         ) : (
           <p className="text-xs italic text-muted-foreground">
-            {score >= 7
+            {dominant_score >= 7
               ? "Awaiting AI analysis..."
               : "Score below threshold. Click Analyze to force."}
           </p>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import type { SetupData, HealthData, WsStatus } from "@/app/lib/types";
+import type { SetupData, HealthData, WsStatus, PriceUpdate } from "@/app/lib/types";
 import { api } from "@/app/lib/api";
 
 const WS_URL = "ws://localhost:8000/ws";
@@ -10,6 +10,7 @@ const RECONNECT_MS = 3000;
 
 export function useCipher() {
   const [setups, setSetups] = useState<Record<string, SetupData>>({});
+  const [livePrices, setLivePrices] = useState<Record<string, PriceUpdate>>({});
   const [health, setHealth] = useState<HealthData | null>(null);
   const [wsStatus, setWsStatus] = useState<WsStatus>("disconnected");
   const wsRef = useRef<WebSocket | null>(null);
@@ -41,6 +42,9 @@ export function useCipher() {
             ...prev,
             [d.symbol]: { ...d, _updatedAt: Date.now() },
           }));
+        } else if (msg.type === "price_update" && msg.data) {
+          const p = msg.data as PriceUpdate;
+          setLivePrices((prev) => ({ ...prev, [p.symbol]: p }));
         }
       } catch {
         /* ignore */
@@ -140,6 +144,7 @@ export function useCipher() {
 
   return {
     setups,
+    livePrices,
     health,
     wsStatus,
     connect,
