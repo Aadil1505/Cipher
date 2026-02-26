@@ -8,10 +8,14 @@ export interface IndicatorData {
   avg_volume: number;
   volume_ratio: number;
   sma_separation_pct: number;
+  rsi: number;
+  atr: number;
   price_above_vwap: boolean;
   sma_bullish_cross: boolean;
   volume_surge: boolean;
   strong_momentum: boolean;
+  rsi_overbought: boolean;
+  rsi_oversold: boolean;
 }
 
 export interface PatternData {
@@ -50,6 +54,9 @@ export interface LLMAnalysis {
   why_enter: string;
   key_risk: string;
   watch_for: string;
+  generated_at?: string;
+  validated?: boolean;
+  validation_warnings?: string[];
 }
 
 export interface SetupData {
@@ -82,3 +89,44 @@ export interface PriceUpdate {
 }
 
 export type WsStatus = "connecting" | "connected" | "disconnected";
+
+export type TradeStatus = "watching" | "active" | "closed";
+export type ExitReason = "hit_target" | "hit_stop" | "manual" | "cancelled";
+
+export interface TradePosition {
+  id: string;
+  symbol: string;
+  direction: string;
+  watch_entry: number;
+  target: number;
+  stop: number;
+  status: TradeStatus;
+  opened_at: string;
+  actual_entry: number | null;
+  entered_at: string | null;
+  exit_price: number | null;
+  exit_reason: ExitReason | null;
+  closed_at: string | null;
+  pnl: number | null;
+  pnl_pct: number | null;
+  entry_alerted: boolean;
+  trigger_above: boolean;
+  confidence: string;
+  why_enter: string;
+  key_risk: string;
+  watch_for: string;
+}
+
+export interface TradeAlertMsg {
+  alert_type: "entry_alert" | "exit_alert";
+  symbol: string;
+  price: number;
+  trade_id: string;
+  direction: string;
+  entry?: number;
+  target?: number;
+  stop?: number;
+  reason?: ExitReason;
+  pnl?: number;
+  pnl_pct?: number;
+}

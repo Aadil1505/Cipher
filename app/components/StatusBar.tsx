@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { HealthData, WsStatus } from "@/app/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -43,6 +45,7 @@ export default function StatusBar({ health, wsStatus }: Props) {
   const ollama = health?.ollama_healthy ?? false;
   const engine = health?.engine_running ?? false;
   const backendOnline = health !== null;
+  const pathname = usePathname();
 
   const wsColorClass =
     wsStatus === "connected"
@@ -74,6 +77,31 @@ export default function StatusBar({ health, wsStatus }: Props) {
             CIPHER
           </h1>
           <GuideDialog />
+          {/* Nav */}
+          <nav className="flex items-center gap-0.5 rounded-lg border bg-muted/40 p-0.5">
+            <Link
+              href="/"
+              className={cn(
+                "rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                pathname === "/"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Dashboard
+            </Link>
+            <Link
+              href="/trades"
+              className={cn(
+                "rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                pathname === "/trades"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Journal
+            </Link>
+          </nav>
           {!backendOnline && (
             <Badge variant="destructive" className="ml-2 rounded-md text-[10px] font-medium uppercase tracking-widest">
               Backend Offline

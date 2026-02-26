@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/card";
 import StatusBar from "./StatusBar";
 import TickerManager from "./TickerManager";
 import SetupCard, { SetupCardSkeleton } from "./SetupCard";
+import TradeAlertToast from "./TradeAlertToast";
+import TradesPanel from "./TradesPanel";
 
 export default function Dashboard() {
   const {
@@ -13,11 +15,19 @@ export default function Dashboard() {
     livePrices,
     health,
     wsStatus,
+    activeTrades,
+    tradeAlerts,
+    tradeHistory,
     startEngine,
     stopEngine,
     addSymbols,
     removeSymbols,
     analyzeSymbol,
+    watchTrade,
+    openTrade,
+    closeTrade,
+    cancelWatch,
+    dismissAlert,
   } = useCipher();
 
   const engineRunning = health?.engine_running ?? false;
@@ -104,6 +114,34 @@ export default function Dashboard() {
     [analyzeSymbol]
   );
 
+  const handleWatch = useCallback(
+    (symbol: string, immediate: boolean) => {
+      watchTrade(symbol, immediate).catch(() => {});
+    },
+    [watchTrade]
+  );
+
+  const handleOpenTrade = useCallback(
+    (symbol: string, price: number) => {
+      openTrade(symbol, price).catch(() => {});
+    },
+    [openTrade]
+  );
+
+  const handleCloseTrade = useCallback(
+    (symbol: string, price: number) => {
+      closeTrade(symbol, price).catch(() => {});
+    },
+    [closeTrade]
+  );
+
+  const handleCancelWatch = useCallback(
+    (symbol: string) => {
+      cancelWatch(symbol).catch(() => {});
+    },
+    [cancelWatch]
+  );
+
   const setupList = Object.values(setups).sort((a, b) => b.dominant_score - a.dominant_score);
 
   // Symbols that are tracked but haven't received data yet
@@ -137,6 +175,11 @@ export default function Dashboard() {
                   setup={s}
                   livePrice={livePrices[s.symbol] ?? null}
                   onAnalyze={handleAnalyze}
+                  activeTrade={activeTrades[s.symbol] ?? null}
+                  onWatch={handleWatch}
+                  onOpenTrade={handleOpenTrade}
+                  onCloseTrade={handleCloseTrade}
+                  onCancelWatch={handleCancelWatch}
                 />
               ))}
               {loadingSymbols.map((s) => (
@@ -150,8 +193,25 @@ export default function Dashboard() {
               symbolCount={displayedSymbols.length}
             />
           )}
+
+          <TradesPanel
+            activeTrades={activeTrades}
+            tradeHistory={tradeHistory}
+            livePrices={livePrices}
+            onConfirmEntry={handleOpenTrade}
+            onClose={handleCloseTrade}
+            onCancel={handleCancelWatch}
+          />
         </div>
       </main>
+
+      <TradeAlertToast
+        alerts={tradeAlerts}
+        livePrices={livePrices}
+        onConfirmEntry={handleOpenTrade}
+        onCancelWatch={handleCancelWatch}
+        onDismiss={dismissAlert}
+      />
 
       <footer className="border-t py-5 px-5">
         <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 text-xs text-muted-foreground">

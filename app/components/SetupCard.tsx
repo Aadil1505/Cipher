@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import type { SetupData, PriceUpdate } from "@/app/lib/types";
+import type { SetupData, PriceUpdate, TradePosition } from "@/app/lib/types";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -92,10 +92,13 @@ function patternDesc(raw: string) {
 /* ── Formatting helpers ────────────────────────── */
 
 function fmtPrice(n: number) {
+  // For sub-penny stocks, show enough decimals to be meaningful
+  const decimals = n !== 0 && Math.abs(n) < 0.01 ? 4 : 2;
   return n.toLocaleString("en-US", {
     style: "currency",
     currency: "USD",
-    minimumFractionDigits: 2,
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
   });
 }
 
@@ -232,12 +235,18 @@ interface Props {
   setup: SetupData;
   livePrice: PriceUpdate | null;
   onAnalyze: (symbol: string) => Promise<unknown>;
+  activeTrade: TradePosition | null;
+  onWatch: (symbol: string, immediate: boolean) => void;
+  onOpenTrade: (symbol: string, price: number) => void;
+  onCloseTrade: (symbol: string, price: number) => void;
+  onCancelWatch: (symbol: string) => void;
 }
 
-export default function SetupCard({ setup, livePrice, onAnalyze }: Props) {
+export default function SetupCard({ setup, livePrice, onAnalyze, activeTrade, onWatch, onOpenTrade, onCloseTrade, onCancelWatch }: Props) {
   const { symbol, score, indicators, patterns, breakdown, bearish_breakdown, bias, dominant_score, llm_analysis } = setup;
   const [analyzing, setAnalyzing] = useState(false);
   const [flash, setFlash] = useState(false);
+  const [watchExpanded, setWatchExpanded] = useState(false);
   const prevUpdate = useRef(setup._updatedAt);
 
   // Use live price if available, fall back to indicator price
@@ -378,6 +387,8 @@ export default function SetupCard({ setup, livePrice, onAnalyze }: Props) {
           <Row label="Vol" value={fmtVol(liveVolume)} />
           <Row label="Vol Ratio" value={fmtRatio(indicators.volume_ratio)} signal={indicators.volume_surge} />
           <Row label="Momentum" value={fmtPct(indicators.sma_separation_pct)} signal={indicators.strong_momentum} />
+          <Row label="RSI(14)" value={indicators.rsi.toFixed(1)} signal={indicators.rsi_oversold ? true : indicators.rsi_overbought ? false : undefined} />
+          <Row label="ATR(14)" value={fmtPrice(indicators.atr)} />
         </div>
       </CardContent>
 
@@ -448,9 +459,16 @@ export default function SetupCard({ setup, livePrice, onAnalyze }: Props) {
       <Separator />
       <CardContent className="px-5 py-3 pb-4">
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            AI Analysis
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              AI Analysis
+            </p>
+            {llm_analysis?.generated_at && (
+              <p className="text-[10px] text-muted-foreground/60">
+                {new Date(llm_analysis.generated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </p>
+            )}
+          </div>
           <Button
             variant="outline"
             size="xs"
@@ -522,6 +540,16 @@ export default function SetupCard({ setup, livePrice, onAnalyze }: Props) {
               )}
             </div>
 
+            {/* Validation warning */}
+            {llm_analysis.validated === false && (
+              <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-[11px] text-yellow-500">
+                <p className="font-semibold">Warning: LLM output may be unreliable</p>
+                {llm_analysis.validation_warnings?.map((w, i) => (
+                  <p key={i} className="mt-0.5 text-yellow-500/80">{w}</p>
+                ))}
+              </div>
+            )}
+
             {/* Entry / Target / Stop row */}
             <div className="grid grid-cols-3 gap-2 rounded-md border bg-muted/60 px-2.5 py-2 font-mono">
               <div className="text-center">
@@ -568,6 +596,191 @@ export default function SetupCard({ setup, livePrice, onAnalyze }: Props) {
           </p>
         )}
       </CardContent>
+
+      {/* ── Watch Trade ─────────────────────────────── */}
+      {llm_analysis && (
+        <>
+          <Separator />
+          <CardContent className="px-5 py-3 pb-4">
+            {!activeTrade ? (
+              /* No active trade — show Watch button or expanded choice */
+              !watchExpanded ? (
+                <Button
+                  variant="outline"
+                  size="xs"
+                  className="w-full border-primary/30 text-primary hover:bg-primary/10"
+                  onClick={() => setWatchExpanded(true)}
+                >
+                  <svg viewBox="0 0 16 16" className="size-3" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="8" cy="8" r="5" /><path d="M8 5v3l2 1.5" />
+                  </svg>
+                  Watch Trade
+                </Button>
+              ) : (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Watch Trade</p>
+                    <button onClick={() => setWatchExpanded(false)} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
+                  </div>
+                  {/* Entry/Target/Stop preview */}
+                  <div className="grid grid-cols-3 gap-2 rounded-md border bg-muted/40 px-2.5 py-2 font-mono text-center">
+                    <div>
+                      <p className="text-[9px] uppercase tracking-widest text-muted-foreground">Entry</p>
+                      <p className="text-xs font-medium">{fmtPrice(llm_analysis.entry)}</p>
+                    </div>
+                    <div className="border-x">
+                      <p className="text-[9px] uppercase tracking-widest text-green-500">Target</p>
+                      <p className="text-xs font-medium text-green-500">{fmtPrice(llm_analysis.target)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] uppercase tracking-widest text-red-500">Stop</p>
+                      <p className="text-xs font-medium text-red-500">{fmtPrice(llm_analysis.stop)}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="xs"
+                      className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                      onClick={() => { onWatch(symbol, true); setWatchExpanded(false); }}
+                    >
+                      Enter Now
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      className="flex-1 border-primary/30 text-primary hover:bg-primary/10"
+                      onClick={() => { onWatch(symbol, false); setWatchExpanded(false); }}
+                    >
+                      Alert at {fmtPrice(llm_analysis.entry)}
+                    </Button>
+                  </div>
+                </div>
+              )
+            ) : activeTrade.status === "watching" ? (
+              /* Watching state — show entry level + distance + actions */
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={cn(
+                      "inline-block h-2 w-2 rounded-full flex-shrink-0",
+                      activeTrade.entry_alerted ? "bg-yellow-500" : "bg-yellow-500/60 animate-pulse"
+                    )} />
+                    <span className="text-xs font-medium text-yellow-500">
+                      {activeTrade.entry_alerted ? "Price reached entry!" : `Waiting for ${fmtPrice(activeTrade.watch_entry)}`}
+                    </span>
+                  </div>
+                  <div className="flex gap-1.5 flex-shrink-0">
+                    {activeTrade.entry_alerted && (
+                      <Button
+                        size="xs"
+                        className="bg-yellow-500 text-black hover:bg-yellow-400 font-semibold text-[10px]"
+                        onClick={() => onOpenTrade(symbol, livePrice?.last_price ?? activeTrade.watch_entry)}
+                      >
+                        Confirm Entry
+                      </Button>
+                    )}
+                    <Button
+                      size="xs"
+                      variant="ghost"
+                      className="text-muted-foreground hover:text-foreground text-[10px]"
+                      onClick={() => onCancelWatch(symbol)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+                {/* Distance to entry */}
+                {livePrice && !activeTrade.entry_alerted && (() => {
+                  const dist = Math.abs(activeTrade.watch_entry - livePrice.last_price);
+                  const pct = (dist / livePrice.last_price) * 100;
+                  const movingToward = activeTrade.trigger_above
+                    ? livePrice.last_price < activeTrade.watch_entry
+                    : livePrice.last_price > activeTrade.watch_entry;
+                  return (
+                    <div className="flex items-center gap-2 text-[11px] font-mono text-muted-foreground">
+                      <span>Now: <span className="text-foreground">{fmtPrice(livePrice.last_price)}</span></span>
+                      <span>·</span>
+                      <span className={movingToward ? "text-yellow-500" : ""}>
+                        {fmtPrice(dist)} ({pct.toFixed(2)}%) {activeTrade.trigger_above ? "below" : "above"} entry
+                      </span>
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : activeTrade.status === "active" ? (
+              /* Active state — P&L + target/stop distance + progress */
+              <div className="space-y-2">
+                {/* Header row */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Active @ <span className="font-mono text-foreground">{fmtPrice(activeTrade.actual_entry)}</span>
+                    </span>
+                  </div>
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    className="border-red-500/40 text-red-500 hover:bg-red-500/10 text-[10px]"
+                    onClick={() => onCloseTrade(symbol, livePrice?.last_price ?? activeTrade.watch_entry)}
+                  >
+                    Close
+                  </Button>
+                </div>
+
+                {activeTrade.actual_entry && livePrice && (() => {
+                  const price = livePrice.last_price;
+                  const entry = activeTrade.actual_entry!;
+                  const pnl = activeTrade.direction === "Bullish" ? price - entry : entry - price;
+                  const pct = (pnl / entry) * 100;
+                  const isPos = pnl >= 0;
+                  const toTarget = Math.abs(activeTrade.target - price);
+                  const toStop = Math.abs(price - activeTrade.stop);
+                  const range = Math.abs(activeTrade.target - activeTrade.stop);
+                  const progress = range > 0
+                    ? Math.min(1, Math.max(0,
+                        activeTrade.direction === "Bullish"
+                          ? (price - activeTrade.stop) / range
+                          : (activeTrade.stop - price) / range
+                      ))
+                    : 0;
+
+                  return (
+                    <>
+                      {/* P&L prominent */}
+                      <p className={cn("font-mono text-base font-bold", isPos ? "text-green-500" : "text-red-500")}>
+                        {pnl >= 0 ? "+" : ""}{fmtPrice(pnl)}
+                        <span className="ml-1.5 text-sm font-semibold opacity-80">({pct >= 0 ? "+" : ""}{pct.toFixed(2)}%)</span>
+                      </p>
+
+                      {/* Progress bar */}
+                      <div className="space-y-1">
+                        <div className="relative h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className={cn("h-full rounded-full transition-all duration-300", isPos ? "bg-green-500" : "bg-red-400")}
+                            style={{ width: `${progress * 100}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-[10px] font-mono">
+                          <span className="text-red-500">Stop {fmtPrice(activeTrade.stop)}</span>
+                          <span className="text-green-500">Target {fmtPrice(activeTrade.target)}</span>
+                        </div>
+                      </div>
+
+                      {/* Distance indicators */}
+                      <div className="flex gap-3 text-[10px] font-mono">
+                        <span className="text-green-500/80">↑ {fmtPrice(toTarget)} to target</span>
+                        <span className="text-muted-foreground">·</span>
+                        <span className="text-red-500/80">↓ {fmtPrice(toStop)} to stop</span>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            ) : null}
+          </CardContent>
+        </>
+      )}
     </Card>
   );
 }

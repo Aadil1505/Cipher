@@ -1,4 +1,4 @@
-import type { LLMAnalysis } from "@/app/lib/types";
+import type { LLMAnalysis, TradePosition } from "@/app/lib/types";
 
 const API = "http://localhost:8000";
 
@@ -47,4 +47,23 @@ export const api = {
       engine_running: boolean;
       tracked_symbols: string[];
     }>("/api/health"),
+
+  watchTrade: (symbol: string, immediate: boolean) =>
+    post<TradePosition>(`/api/trades/watch/${symbol}`, { immediate }),
+
+  openTrade: (symbol: string, actual_entry: number) =>
+    post<TradePosition>(`/api/trades/open/${symbol}`, { actual_entry }),
+
+  closeTrade: (symbol: string, exit_price: number) =>
+    post<TradePosition>(`/api/trades/close/${symbol}`, { exit_price }),
+
+  cancelWatch: (symbol: string) =>
+    fetch(`${API}/api/trades/watch/${symbol}`, { method: "DELETE" }).then((r) => {
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      return r.json() as Promise<{ status: string; symbol: string }>;
+    }),
+
+  getActiveTrades: () => get<TradePosition[]>("/api/trades/active"),
+
+  getTradeHistory: () => get<TradePosition[]>("/api/trades/history"),
 };
